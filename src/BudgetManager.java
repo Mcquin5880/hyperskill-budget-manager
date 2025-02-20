@@ -1,3 +1,6 @@
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.*;
 
 public class BudgetManager {
@@ -8,9 +11,9 @@ public class BudgetManager {
     private double income;
     private double expenses;
 
-    public BudgetManager(Scanner scanner) {
+    public BudgetManager() {
 
-        this.scanner = scanner;
+        this.scanner = new Scanner(System.in);
         this.purchases = new LinkedHashSet<>();
 
         this.categorizedPurchases = new EnumMap<>(PurchaseType.class);
@@ -42,6 +45,8 @@ public class BudgetManager {
                 case 2 -> handlePurchase();
                 case 3 -> handleShowPurchases();
                 case 4 -> System.out.printf("%nBalance: $%.2f%n", income);
+                case 5 -> savePurchases();
+                case 6 -> loadPurchases();
                 default -> System.out.println("Invalid command");
             }
         }
@@ -129,6 +134,8 @@ public class BudgetManager {
         System.out.println("2) Add purchase");
         System.out.println("3) Show list of purchases");
         System.out.println("4) Balance");
+        System.out.println("5) Save");
+        System.out.println("6) Load");
         System.out.println("0) Exit");
     }
 
@@ -149,5 +156,60 @@ public class BudgetManager {
         System.out.println("4) Other");
         System.out.println("5) All");
         System.out.println("6) Back");
+    }
+
+    private void savePurchases() {
+
+        try (PrintWriter writer = new PrintWriter("purchases.txt")) {
+            writer.println(income);
+            for (Purchase p : purchases) {
+                writer.println(p.getType().name() + ";" + p.getName() + ";" + p.getPrice());
+            }
+            System.out.println("\nPurchases were saved!");
+        } catch (IOException e) {
+            System.out.println("An error occurred while saving.");
+        }
+    }
+
+    private void loadPurchases() {
+
+        File file = new File("purchases.txt");
+
+        if (!file.exists()) {
+            System.out.println("File not found!");
+            return;
+        }
+
+        try (Scanner fileScanner = new Scanner(file)) {
+
+            if (fileScanner.hasNextLine()) {
+                income = Double.parseDouble(fileScanner.nextLine());
+            }
+
+            purchases.clear();
+            for (List<Purchase> list : categorizedPurchases.values()) {
+                list.clear();
+            }
+            expenses = 0;
+
+            while (fileScanner.hasNextLine()) {
+
+                String line = fileScanner.nextLine();
+                String[] parts = line.split(";");
+                if (parts.length != 3) continue;
+
+                PurchaseType type = PurchaseType.valueOf(parts[0]);
+                String name = parts[1];
+                double price = Double.parseDouble(parts[2]);
+
+                Purchase p = new Purchase(type, name, price);
+                purchases.add(p);
+                categorizedPurchases.get(type).add(p);
+                expenses += price;
+            }
+            System.out.println("\nPurchases were loaded!");
+        } catch (IOException e) {
+            System.out.println("An error occurred while loading.");
+        }
     }
 }
